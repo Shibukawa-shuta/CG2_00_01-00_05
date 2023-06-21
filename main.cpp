@@ -54,7 +54,7 @@ void Log(const std::wstring& message) {
 	OutputDebugStringA(ConvertString(message).c_str());
 }
 
-//三角形 CG2 02_00　↓
+//三角形 CG2 02_00　22ページ　ここから↓
 IDxcBlob* CompileShader(
 	//CompilerするShaderファイルへのパス
 	const std::wstring& filePath,
@@ -65,6 +65,7 @@ IDxcBlob* CompileShader(
 	IDxcCompiler3* dxcCompiler,
 	IDxcIncludeHandler* includeHandler)
 {
+	//02_00 23ページ　ここから↓
 	//これからシェーダーをコンパイルする旨をログに出す
 	Log(ConvertString(std::format(L"Begin CompilerShader, path:{},profile:{}\n", filePath, profile)));
 	//hlslファイルを読む
@@ -77,7 +78,9 @@ IDxcBlob* CompileShader(
 	shaderSourceBuffer.Ptr = shaderSource->GetBufferPointer();
 	shaderSourceBuffer.Size = shaderSource->GetBufferSize();
 	shaderSourceBuffer.Encoding = DXC_CP_UTF8;//UTF8の文字コードであることを通知
+	//02_00 23ページここまで↑
 
+	//02_00 24ページここから↓
 	LPCWSTR arguments[] = {
 		filePath.c_str(),//コンパイル対象のhlslファイル名
 		L"-E",L"main",//エントリーポイントの指定。基本的にmain以外にはしない
@@ -97,8 +100,9 @@ IDxcBlob* CompileShader(
 	);
 	//コンパイルエラーではなくdxcが起動できないなど致命的な状況
 	assert(SUCCEEDED(hr));
+	//24ページ　ここまで↑
 
-
+	//02_00 ２５ページ　ここから↓
 	//警告・エラーが出たらログに出して止める
 	IDxcBlobUtf8* shaderError = nullptr;
 	shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
@@ -107,18 +111,21 @@ IDxcBlob* CompileShader(
 		//警告　エラー　ダメ絶対
 		assert(false);
 	}
-
+	//25ページ　ここまで↑
+	
+	//02_00 26ページここから↓
 	//コンパイル結果から実行用のバイナリ部分を取得
 	IDxcBlob* shaderBlob = nullptr;
 	hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
 	assert(SUCCEEDED(hr));
 	//成功したログを出す
-	Log(ConvertString(std::format(L"Compile Succeeded,path:{},profile:{}\n", filePath, profile)));
+	Log(ConvertString(std::format(L"Compile Succeeded, path:{}, profile:{}\n", filePath, profile)));
 	//もう使わないリソースを解放
 	shaderSource->Release();
 	shaderResult->Release();
 	//実行用のバイナリを返却
 	return shaderBlob;
+	//02_00 26ページここまで↑
 }
 //ここまで↑
 
@@ -391,7 +398,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	IDxcIncludeHandler* includeHandler = nullptr;
 	hr = dxcUtils->CreateDefaultIncludeHandler(&includeHandler);
 	assert(SUCCEEDED(hr));
+	//21ページここまで↑
 
+	//02_00 30ページ　ここから↓
 	//RootSignature作成
 	D3D12_ROOT_SIGNATURE_DESC descriptionRootSignature{};
 	descriptionRootSignature.Flags =
@@ -411,6 +420,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	hr = device-> CreateRootSignature (0,signatureBlob->GetBufferPointer(),
 	signatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature));
 	assert(SUCCEEDED(hr));
+	//30ページここまで↑
 
 	//InputLayout
 	D3D12_INPUT_ELEMENT_DESC inputElementDescs[1] = {};
@@ -437,7 +447,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//Shaderをコンパイルする
 	IDxcBlob* vertexShaderBlob = CompileShader(L"Object3D.VS.hlsl",
-		L"vs_6_0", dxcUtils, dxcCompiler, includeHandler);
+	L"vs_6_0", dxcUtils, dxcCompiler, includeHandler);
 	assert(vertexShaderBlob != nullptr);
 
 	IDxcBlob* pixelShaderBlob = CompileShader(L"Object3D.PS.hlsl",
@@ -562,15 +572,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			float clearColor[] = { 0.1f,0.25f,0.5f,1.0f };
 			commandList->ClearRenderTargetView(rtvHandle[backBufferIndex], clearColor, 0, nullptr);
 
-
-			//遷移前(現在)のResorceState
-			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-			//遷移後のResourceState
-			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-
-			//TransitionBarrierを張る
-			commandList->ResourceBarrier(1, &barrier);
-
 			//三角形描画↓
 			commandList->RSSetViewports(1, &viewport);//Viewportを設定
 			commandList->RSSetScissorRects(1, &scissorRect);
@@ -583,6 +584,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//描画！（DrawCall/ドローコール）。3頂点で一つのインスタンス。インスタンスについては今後
 			commandList->DrawInstanced(3, 1, 0, 0);
 
+			//遷移前(現在)のResorceState
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			//遷移後のResourceState
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+
+			//TransitionBarrierを張る
+			commandList->ResourceBarrier(1, &barrier);
+
+		
 
 			//コマンドリストのクローズ
 			//コマンドリストの内容を確定させる。全てのコマンドを積んでからCloseすること
@@ -620,6 +630,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			assert(SUCCEEDED(hr));	
 		}
 	}
+
+	CloseHandle(fenceEvent);
+	fence->Release();
+	rtvDescriptorHeap->Release();
+	swapChainResources[0]->Release();
+	swapChainResources[1]->Release();
+	swapChain->Release();
+	commandList->Release();
+	commandAllocator->Release();
+	commandQueue->Release();
+	device->Release();
+	useAdapter->Release();
+	dxgiFactory->Release();
+#ifdef _DEBUG
+	debugContorller->Release();
+#endif
+	CloseWindow(hwnd);
+
 	vertexResource->Release();
 	graphicsPipelineState->Release();
 	signatureBlob->Release();
